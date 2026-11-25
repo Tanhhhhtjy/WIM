@@ -1,0 +1,41 @@
+#pragma kernel MedianEMA
+Texture2D<float4> _Lit;
+Texture2D<float4> _Albedo;
+RWStructuredBuffer<float4> _Reference;
+int _Width, _Height;
+float _DeltaTime;
+groupshared float sorted[256];
+groupshared uint count;
+float L(float3 c){return dot(c,float3(.2126,.7152,.0722));}
+[numthreads(256,1,1)]
+void MedianEMA(uint3 tid:SV_GroupThreadID)
+{
+    uint i=tid.x;
+    if(i==0)count=0;
+    GroupMemoryBarrierWithGroupSync();
+    int2 p=int2((i%16+.5)*_Width/16,(i/16+.5)*_Height/16);
+    float4 a=_Albedo.Load(int3(p,0));
+    bool valid=a.a>=.99&&L(a.rgb)>=.002;
+    sorted[i]=valid?L(_Lit.Load(int3(p,0)).rgb)/max(L(a.rgb),.02):1e20;
+    if(valid)InterlockedAdd(count,1);
+    GroupMemoryBarrierWithGroupSync();
+    for(uint k=2;k<=256;k*=2)
+    for(uint j=k/2;j>0;j/=2)
+    {
+        uint other=i^j;
+        float mine=sorted[i],theirs=sorted[other];
+        bool low=((i&k)==0)==((i&j)==0);
+        GroupMemoryBarrierWithGroupSync();
+        sorted[i]=low?min(mine,theirs):max(mine,theirs);
+        GroupMemoryBarrierWithGroupSync();
+    }
+    if(i==0)
+    {
+        float4 old=_Reference[0];
+        if(count<8){_Reference[0]=float4(old.w>.5?old.x:1,old.y,count,old.w);return;}
+        float raw=count%2?sorted[count/2]:(sorted[count/2-1]+sorted[count/2])*.5;
+        float ratio=clamp(raw,.25,2.5);
+        float ema=old.w>.5?lerp(old.x,ratio,1-exp(-max(_DeltaTime,0)/.35)):ratio;
+        _Reference[0]=float4(ema,raw,count,1);
+    }
+}

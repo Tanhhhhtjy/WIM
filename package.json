@@ -1,0 +1,14 @@
+{
+  "name": "com.wim.livewalk",
+  "displayName": "WIM Peripheral Walk Prototype",
+  "version": "0.2.0",
+  "unity": "6000.0",
+  "description": "pjy-vr 桌面 Unity Editor 周边视野、键鼠漫游与光照比较原型。",
+  "dependencies": {
+    "com.unity.render-pipelines.universal": "17.0.4",
+    "com.unity.xr.interaction.toolkit": "3.4.1",
+    "com.unity.xr.core-utils": "2.6.0",
+    "com.unity.inputsystem": "1.19.0",
+    "com.unity.nuget.newtonsoft-json": "3.2.1"
+  }
+}
